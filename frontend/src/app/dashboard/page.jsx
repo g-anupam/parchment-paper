@@ -1,27 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const [notes, setNotes] = useState([]);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
 
-  const [selectedNote, setSelectedNote] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // Add new note
+  const fileInputRef = useRef(null);
+
   function handleAddNote() {
     if (!title && !description) return;
 
@@ -32,45 +29,122 @@ export default function DashboardPage() {
       image,
     };
 
-    setNotes([...notes, newNote]);
+    setNotes([newNote, ...notes]);
 
     setTitle("");
     setDescription("");
     setImage(null);
+    setExpanded(false);
   }
 
-  // Update existing note
-  function handleUpdateNote() {
-    const updatedNotes = notes.map((note) =>
-      note.id === selectedNote.id ? selectedNote : note,
-    );
+  const router = useRouter();
 
-    setNotes(updatedNotes);
-    setSelectedNote(null);
+  async function handleLogout() {
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/v1/users/logout",
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+
+      router.push("/login");
+    } catch (error) {
+      console.error(error.message);
+    }
   }
 
-  // Delete note
-  function handleDeleteNote(id) {
-    const filteredNotes = notes.filter((note) => note.id !== id);
-    setNotes(filteredNotes);
-    setSelectedNote(null);
-  }
+  const filteredNotes = notes.filter(
+    (note) =>
+      note.title.toLowerCase().includes(search.toLowerCase()) ||
+      note.description.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
-      <div className="h-14 bg-white border-b flex items-center px-6">
-        <h1 className="text-xl font-semibold">Parchment Paper</h1>
+      <div className="h-14 bg-white border-b flex items-center justify-between px-6">
+        <h1 className="font-semibold text-lg">Parchment Paper</h1>
+
+        <Input
+          placeholder="Search notes..."
+          className="max-w-sm"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <Button variant="outline" onClick={handleLogout}>
+          Sign Out
+        </Button>
+      </div>
+
+      {/* Note Input Section */}
+      <div className="p-6">
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-4 space-y-3">
+            {/* Expand trigger */}
+            <Input
+              placeholder="Take a note..."
+              onFocus={() => setExpanded(true)}
+              className={!expanded ? "block" : "hidden"}
+            />
+
+            {/* Expanded editor */}
+            {expanded && (
+              <>
+                <Input
+                  placeholder="Title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+
+                <Textarea
+                  placeholder="Write your note..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+
+                <div className="flex justify-between items-center pt-2">
+                  {/* Hidden file input */}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+
+                      const reader = new FileReader();
+                      reader.onload = () => setImage(reader.result);
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current.click()}
+                  >
+                    Upload Image
+                  </Button>
+
+                  <Button onClick={handleAddNote}>Add Note</Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Notes Grid */}
-      <div className="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {notes.map((note) => (
-          <Card
-            key={note.id}
-            className="cursor-pointer hover:shadow-md transition"
-            onClick={() => setSelectedNote(note)}
-          >
+      <div className="px-6 pb-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {filteredNotes.map((note) => (
+          <Card key={note.id} className="hover:shadow-md transition">
             <CardContent className="p-4 space-y-2">
               {note.image && (
                 <img
@@ -79,133 +153,15 @@ export default function DashboardPage() {
                 />
               )}
 
-              <h3 className="font-semibold">{note.title}</h3>
+              {note.title && <h3 className="font-semibold">{note.title}</h3>}
 
-              <p className="text-sm text-gray-600 line-clamp-4">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
                 {note.description}
               </p>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      {/* Add Note Button */}
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button className="fixed bottom-6 right-6 h-14 w-14 rounded-full text-2xl">
-            +
-          </Button>
-        </DialogTrigger>
-
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Note</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <Input
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-
-            <Textarea
-              placeholder="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = () => setImage(reader.result);
-                reader.readAsDataURL(file);
-              }}
-            />
-
-            <Button onClick={handleAddNote} className="w-full">
-              Save Note
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit / View Modal */}
-      {selectedNote && (
-        <Dialog open={true} onOpenChange={() => setSelectedNote(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Note</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-3">
-              <Input
-                value={selectedNote.title}
-                onChange={(e) =>
-                  setSelectedNote({
-                    ...selectedNote,
-                    title: e.target.value,
-                  })
-                }
-              />
-
-              <Textarea
-                value={selectedNote.description}
-                onChange={(e) =>
-                  setSelectedNote({
-                    ...selectedNote,
-                    description: e.target.value,
-                  })
-                }
-              />
-
-              {selectedNote.image && (
-                <img
-                  src={selectedNote.image}
-                  className="rounded-md max-h-48 object-cover w-full"
-                />
-              )}
-
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    setSelectedNote({
-                      ...selectedNote,
-                      image: reader.result,
-                    });
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-
-              <div className="flex gap-2">
-                <Button onClick={handleUpdateNote} className="flex-1">
-                  Update
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  onClick={() => handleDeleteNote(selectedNote.id)}
-                  className="flex-1"
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
