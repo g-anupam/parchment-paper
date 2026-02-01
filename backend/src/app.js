@@ -1,10 +1,10 @@
-import express from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 // Route imports
-import userRouter from "./routes/user.routes.js";
-import noteRouter from "./routes/note.routes.js";
+import userRouter from './routes/user.routes.js';
+import noteRouter from './routes/note.routes.js';
 
 const app = express();
 
@@ -16,7 +16,7 @@ const app = express();
  */
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173", // Frontend URL
+    origin: process.env.CORS_ORIGIN || 'http://localhost:3000', // Frontend URL
     credentials: true, // Required for sending/receiving cookies
   })
 );
@@ -25,8 +25,8 @@ app.use(
  * Request Parsing
  * 'limit' prevents users from sending massive JSON payloads that could crash the server.
  */
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(express.json({ limit: '16kb' }));
+app.use(express.urlencoded({ extended: true, limit: '16kb' }));
 
 /**
  * Cookie Parser
@@ -38,18 +38,18 @@ app.use(cookieParser());
  * Static Files
  * Allows serving temporary images from the public/temp folder if needed.
  */
-app.use(express.static("public"));
+app.use(express.static('public'));
 
 // --- 2. ROUTES ---
 
 // Health check (stolen from your past project—it's a great habit!)
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK", message: "Server is healthy" });
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is healthy' });
 });
 
 // Primary API Routes
-app.use("/api/v1/users", userRouter);
-app.use("/api/v1/notes", noteRouter);
+app.use('/api/v1/users', userRouter);
+app.use('/api/v1/notes', noteRouter);
 
 // --- 3. ERROR HANDLING ---
 
